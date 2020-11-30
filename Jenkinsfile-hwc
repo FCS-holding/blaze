@@ -1,0 +1,33 @@
+//HWC Blaze build
+pipeline {
+agent {label 'merlin'}
+    stages {
+        stage ("build-hwc-blaze") {
+            steps {
+                 dir("ws-blaze") {
+		 checkout scm
+                 script {
+                        sh "rm -rf release"
+                        sh "mkdir release"
+                        dir("release"){
+			sh " cd ~/Code-latest/genome-release; git pull"
+                       	sh "cp /curr/limark/Code-latest/genome-release/build/common/tools/bin/sdaccel.ini /curr/limark/falcon-hwc/blaze/bin"
+                       	sh "source /curr/software/util/modules-tcl/init/bash"
+			version= sh(returnStdout: true, script: 'git describe --tag').trim()
+                        sh "echo $version"
+                        sh "module load sdx/17.4; cmake -DCMAKE_BUILD_TYPE=Release -DRELEASE_VERSION=$version -DDEPLOYMENT_DST=hwc -DCMAKE_INSTALL_PREFIX=/curr/limark/falcon-hwc/blaze .. "
+                        sh "make -j 8"
+			sh "make test"
+                        sh "make install"
+			sh "cd ~/falcon-hwc;tar zcf blaze-$version-hwc.tgz blaze/; mv blaze-$version-hwc.tgz ~/artifacts/hwc"
+			sh "cd ~/artifacts/hwc; echo s3://fcs-cicd-test/release/hwc/blaze/blaze-$version-hwc.tgz > latest"
+			sh "cd ~/artifacts/hwc; aws s3 cp blaze-$version-hwc.tgz s3://fcs-cicd-test/release/hwc/blaze/blaze-$version-hwc.tgz"
+                        sh "cd ~/artifacts/hwc; aws s3 cp latest s3://fcs-cicd-test/release/hwc/blaze/latest"
+                        sh "cd ~/artifacts/hwc; rm -f latest"
+			}
+		     }
+                  }
+               }
+            }
+        }
+    }     

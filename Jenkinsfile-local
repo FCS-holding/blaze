@@ -1,0 +1,32 @@
+pipeline {
+agent {label 'merlin'}
+    stages {
+        stage ("build-local-blaze") {
+            steps {
+                 dir("ws-blaze") {
+		 checkout scm
+                 script {
+                        sh "rm -rf release"
+                        sh "mkdir release"
+                        dir("release"){
+			sh " cd ~/Code-latest/genome-release; git pull"
+                       	sh "cp /curr/limark/Code-latest/genome-release/build/common/tools/bin/sdaccel.ini /curr/limark/falcon-local/blaze/bin"
+                       	sh "source /curr/software/util/modules-tcl/init/bash"
+			version= sh(returnStdout: true, script: 'git describe --tag').trim()
+                        sh "echo $version"
+                        sh "module load xrt; cmake -DCMAKE_BUILD_TYPE=Release -DRELEASE_VERSION=$version -DDEPLOYMENT_DST= -DCMAKE_INSTALL_PREFIX=/curr/limark/falcon-local/blaze .. "
+                        sh "make -j 8"
+			sh "make test"
+                        sh "make install"
+			sh "cd ~/falcon-local;tar zcf blaze-$version-Internal.tgz blaze/; mv blaze-$version-Internal.tgz ~/artifacts/local"
+			sh "cd ~/artifacts/local; echo s3://fcs-cicd-test/release/blaze/blaze-$version-Internal.tgz > latest"
+			sh "cd ~/artifacts/local; aws s3 cp blaze-$version-Internal.tgz s3://fcs-cicd-test/release/blaze/blaze-$version-Internal.tgz"
+                        sh "cd ~/artifacts/local; aws s3 cp latest s3://fcs-cicd-test/release/blaze/latest"
+                        sh "cd ~/artifacts/local; rm -f latest"
+			}
+		     }
+                  }
+               }
+            }
+        }
+    }

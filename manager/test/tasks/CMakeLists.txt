@@ -1,0 +1,12 @@
+function(compile_task proj_name)
+  add_library(${proj_name} SHARED ${proj_name}/${proj_name}.cpp)
+  add_dependencies(${proj_name} Google KSight)
+endfunction(compile_task)
+
+file(GLOB subdir RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/*)
+foreach(dir ${subdir})
+  if(IS_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/${dir})
+    message(STATUS "compiling test tasks: ${dir}")
+    compile_task(${dir})
+  endif()
+endforeach()
